@@ -5,6 +5,10 @@ import json
 import os
 import logging
 import argparse
+import time
+import random
+import string
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -13,6 +17,9 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Log that test_api.py is being run
+logger.info("=== Starting test_api.py script - LLM responses will be logged to llm_responses.log ===")
 
 # Set defaults
 API_URL = os.getenv("API_URL", "http://localhost:8000")
@@ -24,9 +31,36 @@ class APITester:
         self.base_url = base_url
         self.user_id = None
         self.feature_id = None
+        logger.info(f"Initialized API tester with base URL: {base_url}")
     
-    def create_user(self, username="testuser", email="test@example.com", role="manager", experience="intermediate"):
-        """Create a new user for testing"""
+    def _generate_unique_id(self, length=6):
+        """Generate a unique identifier using timestamp and random characters"""
+        timestamp = int(time.time())
+        random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
+        return f"{timestamp}_{random_chars}"
+    
+    def create_user(self, username=None, email=None, role="employee", experience="intermediate"):
+        """
+        Create a new user for testing with unique credentials
+        
+        Args:
+            username (str, optional): Username for the new user. If None, a unique username will be generated.
+            email (str, optional): Email for the new user. If None, a unique email will be generated.
+            role (str): The user's role in the product
+            experience (str): The user's experience level
+            
+        Returns:
+            dict: User data if created successfully, None otherwise
+        """
+        # Generate unique username and email if not provided
+        unique_id = self._generate_unique_id()
+        
+        if username is None:
+            username = f"testuser_{unique_id}"
+        
+        if email is None:
+            email = f"test_{unique_id}@example.com"
+        
         url = f"{self.base_url}/users/"
         payload = {
             "username": username,
@@ -75,6 +109,8 @@ class APITester:
             return None
         
         user_id = user_id or self.user_id
+        
+        logger.info(f"=== CALLING ANALYZE CONTEXT API - Will trigger LLM for feature recommendations ===")
         
         # Sample HTML for testing
         html_snapshot = """
@@ -149,6 +185,8 @@ class APITester:
         feature_id = feature_id or self.feature_id
         user_id = user_id or self.user_id
         
+        logger.info(f"=== CALLING TUTORIAL API - Will trigger LLM for tutorial generation ===")
+        
         url = f"{self.base_url}/features/{feature_id}/tutorial"
         payload = {
             "user_id": user_id,
@@ -181,6 +219,8 @@ class APITester:
         
         feature_id = feature_id or self.feature_id
         user_id = user_id or self.user_id
+        
+        logger.info(f"=== CALLING AUTOMATION API - Will trigger LLM for automation steps ===")
         
         url = f"{self.base_url}/features/{feature_id}/automate"
         payload = {
@@ -313,7 +353,7 @@ class APITester:
 
 def main():
     """Main function to run the API tests"""
-    parser = argparse.ArgumentParser(description="Test the Feature Discovery Agent API")
+    parser = argparse.ArgumentParser(description="Test feature discovery agent API")
     parser.add_argument("--url", help="API base URL", default=API_URL)
     parser.add_argument("--test", choices=["all", "user", "features", "context", "tutorial", "automate", "insights"], 
                         default="all", help="Specific test to run")
@@ -345,6 +385,8 @@ def main():
         tester.get_tutorial()
         tester.get_user_insights()
         tester.get_feature_insights()
+    
+    logger.info("=== test_api.py script completed - Check llm_responses.log for LLM outputs ===")
 
 if __name__ == "__main__":
     main()

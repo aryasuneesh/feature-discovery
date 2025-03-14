@@ -3,6 +3,7 @@
 import sys
 import os
 import logging
+import argparse
 from sqlalchemy.orm import Session
 
 # Add parent directory to path to import modules
@@ -110,8 +111,13 @@ users = [
     }
 ]
 
-def seed_database():
-    """Seed the database with initial data"""
+def seed_database(force_user_seed=False):
+    """
+    Seed the database with initial data
+    
+    Args:
+        force_user_seed (bool): If True, re-add user seed data even if users already exist
+    """
     db = SessionLocal()
     try:
         # Check if features already exist
@@ -128,13 +134,27 @@ def seed_database():
         
         # Check if users already exist
         existing_users = db.query(User).count()
-        if existing_users == 0:
+        if existing_users == 0 or force_user_seed:
+            if force_user_seed and existing_users > 0:
+                logger.info(f"Force user seed enabled. Re-adding user seed data.")
+            
             # Add users
             for user_data in users:
-                user = User(**user_data, feature_discovery_score=0.0)
-                db.add(user)
+                # check if user already exists using email
+                existing_user = db.query(User).filter(User.email == user_data["email"]).first()
+                
+                if existing_user and force_user_seed:
+                    # update existing user
+                    for key, value in user_data.items():
+                        setattr(existing_user, key, value)
+                    logger.info(f"Updated existing user: {user_data['username']}")
+                elif not existing_user:
+                    # create new user
+                    user = User(**user_data, feature_discovery_score=0.0)
+                    db.add(user)
+                    logger.info(f"Added new user: {user_data['username']}")
             
-            logger.info(f"Added {len(users)} users to the database")
+            logger.info(f"User seed completed")
         else:
             logger.info(f"Found {existing_users} existing users. Skipping user seed.")
         
@@ -146,5 +166,13 @@ def seed_database():
     finally:
         db.close()
 
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description='Seed the database with initial data')
+    parser.add_argument('--force-user-seed', action='store_true', 
+                        help='Force re-adding user seed data even if users already exist')
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    seed_database()
+    args = parse_args()
+    seed_database(force_user_seed=args.force_user_seed)

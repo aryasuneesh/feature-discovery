@@ -53,21 +53,51 @@ class ContextRequest(BaseModel):
     html_snapshot: str
     user_query: Optional[str] = None
 
+class FormField(BaseModel):
+    type: str
+    id: str = ""
+    name: str = ""
+    placeholder: Optional[str] = ""
+    label: Optional[str] = ""
+    value: str = ""
+
+class NavItem(BaseModel):
+    text: str
+    href: str = ""
+    active: bool = False
+    has_icon: bool = False
+
+class Button(BaseModel):
+    text: str
+    id: str = ""
+    class_: Optional[str] = Field(default="", alias="class")
+    disabled: bool = False
+    type: str = ""
+
 class ContextData(BaseModel):
     title: str
     url: str
     current_section: str
-    form_fields: List[Dict[str, Any]]
-    nav_items: List[Dict[str, Any]]
+    form_fields: List[FormField]
+    nav_items: List[NavItem]
     headings: List[str]
-    buttons: List[Dict[str, Any]]
+    buttons: List[Button]
     potential_features: List[str]
     error_messages: List[str]
+    metadata: Dict[str, str] = {}
+    user_info: Dict[str, str] = {}
+    domain: str = ""
+
+class RecommendedFeature(BaseModel):
+    id: int
+    name: str
+    reason: str
+    nudge: str
 
 class ContextResponse(BaseModel):
     context_id: int
     extracted_context: ContextData
-    recommendations: List[Dict[str, Any]]
+    recommendations: List[RecommendedFeature]
     explanation: str
     can_automate: bool
 
@@ -77,12 +107,19 @@ class TutorialRequest(BaseModel):
     context_data: Optional[Dict[str, Any]] = None
 
 class TutorialStep(BaseModel):
-    step_number: int
     description: str
+
+class Tutorial(BaseModel):
+    title: str
+    introduction: str
+    steps: List[str]
+    tips: List[str]
+    related_features: List[str]
+    can_automate: bool
 
 class TutorialResponse(BaseModel):
     interaction_id: int
-    tutorial: Dict[str, Any]
+    tutorial: Tutorial
     discovery_status: float
     can_automate: bool
 
@@ -91,9 +128,14 @@ class AutomationRequest(BaseModel):
     user_id: int
     context_data: Dict[str, Any]
 
+class Automation(BaseModel):
+    steps: List[str]
+    explanation: str
+    success: bool
+
 class AutomationResponse(BaseModel):
     interaction_id: int
-    automation: Dict[str, Any]
+    automation: Automation
     discovery_status: float
 
 # Feedback schemas
